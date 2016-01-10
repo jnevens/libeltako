@@ -1,0 +1,68 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# extra
+Makefile
+Makefile.in
+config.*
+configure
+.libs
+.deps
+autom4te.cache
+aclocal.m4
+ar-lib
+autom4te.cache/
+compile
+depcomp
+install-sh
+libtool
+libeltako.pc
+ltmain.sh
+m4/*
+missing
+stamp-h1
+tools/eltako-send
+tools/eltako-dump
+
+# eclipse
+.cproject
+.project
+
+# tests
+tests/*.log
+test-driver
+tests/*.trs
+
+#coverage
+coverage.info
+coverage
+*.gcno
+*.gcov
+tests/*.gcda
