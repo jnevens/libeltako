@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <message.h>
+#include <libeltako/message.h>
 
 #define X(a, b) b,
 char *msg_types_name[] = {

@@ -6,8 +6,8 @@
  */
 #include <string.h>
 
-#include "message.h"
-#include "dimmer.h"
+#include <libeltako/message.h>
+#include <libeltako/dimmer.h>
 
 message_t *dimmer_create_message(uint32_t src, dimmer_event_t event, uint8_t dim_val, uint8_t dim_speed, bool lock)
 {

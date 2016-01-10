@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "frame_receiver.h"
+#include <libeltako/frame_receiver.h>
 
 struct frame_receiver_s
 {

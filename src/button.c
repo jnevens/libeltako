@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#include "button.h"
+#include <libeltako/button.h>
 
 message_t *button_create_message(uint32_t src, button_wip_t btn, button_event_t event)
 {

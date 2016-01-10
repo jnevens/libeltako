@@ -9,8 +9,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "serial.h"
-#include "frame.h"
+#include <libeltako/serial.h>
+#include <libeltako/frame.h>
 
 struct frame_s
 {

@@ -6,7 +6,7 @@ lib_LTLIBRARIES = libeltako.la
 libeltako_la_LIBADD =
 libeltako_la_LDFLAGS =
 
-libeltako_la_SOURCES =
+libeltako_la_SOURCES = \
 	button.c \
 	dimmer.c \
 	frame.c \

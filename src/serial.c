@@ -14,7 +14,7 @@
 #include <fcntl.h>
 #include <termios.h>
 
-#include "serial.h"
+#include <libeltako/serial.h>
 
 int serial_port_init(char *port)
 {

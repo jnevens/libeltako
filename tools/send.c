@@ -8,12 +8,12 @@
 #include <fcntl.h>
 #include <termios.h>
 
-#include "frame.h"
-#include "serial.h"
-#include "frame_receiver.h"
-#include "message.h"
-#include "button.h"
-#include "dimmer.h"
+#include <libeltako/frame.h>
+#include <libeltako/serial.h>
+#include <libeltako/frame_receiver.h>
+#include <libeltako/message.h>
+#include <libeltako/button.h>
+#include <libeltako/dimmer.h>
 
 int fd = 0;
 
