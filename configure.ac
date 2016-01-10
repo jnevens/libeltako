@@ -30,25 +30,11 @@ LT_INIT()
 LT_PROG_RC
 
 # Tool applications.
-AC_ARG_ENABLE([vsbtools],
-	[AS_HELP_STRING([--enable-vsbtools=@<:@yes/no@:>@],
-		[Build vsb tools @<:@default=yes@:>@])],
-	[], [enable_vsbtools=yes])
-AM_CONDITIONAL([ENABLE_TOOLS], [test "x$enable_vsbtools" = "xyes"])
-
-# Example applications.
-AC_ARG_ENABLE([examples],
-	[AS_HELP_STRING([--enable-examples=@<:@yes/no@:>@],
-		[Build vsb example applications@<:@default=yes@:>@])],
-	[], [enable_examples=yes])
-AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
-
-AC_MSG_CHECKING([Don't build libevquick])
-AC_ARG_WITH(libevquick,
-    [  --with-libevquick       Do/Don't build libevquick @<:@default=yes@:>@],
-    with_libevquick=$withval,
-    with_libevquick=yes)
-AC_MSG_RESULT($with_libevquick)
+AC_ARG_ENABLE([eltakotools],
+	[AS_HELP_STRING([--enable-eltakotools=@<:@yes/no@:>@],
+		[Build eltako tools @<:@default=yes@:>@])],
+	[], [enable_eltakotools=yes])
+AM_CONDITIONAL([ENABLE_TOOLS], [test "x$enable_eltakotools" = "xyes"])
 
 # Tests
 AC_ARG_ENABLE([tests],
@@ -58,8 +44,6 @@ AC_ARG_ENABLE([tests],
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$enable_tests" = "xyes"])
 
 AX_VALGRIND_CHECK
-
-AM_CONDITIONAL([ENABLE_LIBEVQUICK], [test "x$with_libevquick" = "xyes"])
 
 # Checks for programs.
 AC_PROG_CC
