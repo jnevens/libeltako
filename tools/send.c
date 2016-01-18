@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <argp.h>
 
 #include <libeltako/frame.h>
 #include <libeltako/serial.h>
@@ -17,26 +18,84 @@
 
 int fd = 0;
 
-void print_buf(uint8_t *buf, size_t len)
+/* Used by main to communicate with parse_opt. */
+struct arguments
 {
-	for (size_t i = 0; i < len; i++) {
-		printf("%02X ", buf[i]);
+	char *dev;
+	uint32_t data;
+	uint32_t src;
+	uint8_t status;
+	uint8_t rorg;
+};
+
+/* Default arguments */
+struct arguments arguments = { .dev = "/dev/ttyUSB0", .status = 0, .data=0x00};
+
+/* Program documentation. */
+static char doc[] = "eltako-send, a tool to send telegrams to the eltako series 14 bus.";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "eltako-send [options] source(hex) data(hex)";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+		{ "device", 'D', "Device", 0, "Device to use (default: /dev/ttyUSB0" },
+		{ "status", 's', "Status", 0, "Status (hex, default: 0x00)" },
+		{ "rorg", 'r', "RORG", 0, "Rorg (hex, default: 0x05)" },
+		{ 0 }
+	};
+
+/* Parse a single option. */
+static error_t parse_opt(int key, char *arg, struct argp_state *state)
+{
+	/* Get the input argument from argp_parse, which we
+	 know is a pointer to our arguments structure. */
+	struct arguments *arguments = state->input;
+
+	switch (key) {
+	case 'D':
+		arguments->dev = arg;
+		break;
+	case 's':
+		arguments->status = strtoll(arg, NULL, 16);
+		break;
+	case 'r':
+		arguments->rorg = strtoll(arg, NULL, 16);
+		break;
+	case ARGP_KEY_ARG:
+		if (state->arg_num == 0)
+			arguments->src = strtoll(arg, NULL, 16);
+		else if (state->arg_num == 1)
+			arguments->data = strtoll(arg, NULL, 16);
+		break;
+	case ARGP_KEY_END:
+		if (state->arg_num < 2) {
+			argp_usage(state);
+		}
+		break;
+	default:
+		return ARGP_ERR_UNKNOWN;
 	}
-	printf("\n");
+	return 0;
 }
+
+static struct argp argp = { options, parse_opt, args_doc, doc };
 
 
 
 int main(int argc, char *argv[])
 {
-	if (argc < 3) {
-		printf("usage: %s [PORT] [TYPE] [ACTION] OPTIONAL ARGUMENTS\n", argv[0]);
-		printf("\tPORT    ex.: /dev/ttyUSB0\n");
-		printf("\tTYPE    BUTTON, DIMMER\n");
-		return -1;
-	}
 
-	if ((fd = serial_port_init(argv[1])) <= 0) {
+	/* parse arguments */
+	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+//	if (argc < 3) {
+//		printf("usage: %s [PORT] [TYPE] [ACTION] OPTIONAL ARGUMENTS\n", argv[0]);
+//		printf("\tPORT    ex.: /dev/ttyUSB0\n");
+//		printf("\tTYPE    BUTTON, DIMMER\n");
+//		return -1;
+//	}
+
+	if ((fd = serial_port_init(arguments.dev)) <= 0) {
 		printf("serial port setup failed!\n");
 		return -1;
 	}
@@ -72,11 +131,12 @@ int main(int argc, char *argv[])
 //	frame_print(btn_release_frame);
 //	message_send(btn_release, fd);
 
-	message_t *dmr = dimmer_create_message(0xeeeeee00, DIMMER_EVENT_ON, 36, 0x00, false);
-	message_print(dmr);
-	frame_t *dmr_frame = message_to_frame(dmr);
-	frame_print(dmr_frame);
-	message_send(dmr, fd);
+	//message_t *dmr = dimmer_create_message(0xeeeeee00, DIMMER_EVENT_ON, 36, 0x00, false);
+	frame_t *frame = frame_create(arguments.rorg, (uint8_t *)&arguments.data, arguments.src, arguments.status);
+	//message_print(dmr);
+	//frame_t *dmr_frame = message_to_frame(dmr);
+	frame_print(frame);
+	frame_send(frame, fd);
 
 	serial_port_close(fd);
 	return 0;
