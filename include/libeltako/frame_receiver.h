@@ -10,15 +10,15 @@
 
 #include "frame.h"
 
-typedef struct frame_receiver_s frame_receiver_t;
+typedef struct eltako_frame_receiver_s eltako_frame_receiver_t;
 
 
 
-frame_receiver_t *frame_receiver_init();
-void frame_receiver_destroy(frame_receiver_t *receiver);
-void frame_receiver_add_data(frame_receiver_t *receiver, uint8_t *data, size_t len);
-void frame_receiver_reset(frame_receiver_t *receiver);
-void frame_receiver_trim_buffer(frame_receiver_t *receiver);
-frame_t *frame_receiver_parse_buffer(frame_receiver_t *receiver);
+eltako_frame_receiver_t *eltako_frame_receiver_init();
+void eltako_frame_receiver_destroy(eltako_frame_receiver_t *receiver);
+void eltako_frame_receiver_add_data(eltako_frame_receiver_t *receiver, uint8_t *data, size_t len);
+void eltako_frame_receiver_reset(eltako_frame_receiver_t *receiver);
+void eltako_frame_receiver_trim_buffer(eltako_frame_receiver_t *receiver);
+eltako_frame_t *eltako_frame_receiver_parse_buffer(eltako_frame_receiver_t *receiver);
 
 #endif /* FRAME_RECEIVER_H_ */

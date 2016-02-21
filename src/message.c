@@ -12,22 +12,22 @@
 
 #define X(a, b) b,
 char *msg_types_name[] = {
-		MSG_TYPES
+		ELTAKO_MSG_TYPES
 };
 #undef X
 
-struct message_s
+struct eltako_message_s
 {
-	message_type_t type;
+	eltako_message_type_t type;
 	uint32_t src;
 	uint8_t status;
 	uint8_t rorg;
 	uint8_t data[4];
 };
 
-message_t *message_create(message_type_t type, uint8_t rorg, uint8_t data[], uint32_t src, uint8_t status)
+eltako_message_t *eltako_message_create(eltako_message_type_t type, uint8_t rorg, uint8_t data[], uint32_t src, uint8_t status)
 {
-	message_t *msg = calloc(1, sizeof(message_t));
+	eltako_message_t *msg = calloc(1, sizeof(eltako_message_t));
 	msg->type = type;
 	msg->rorg = rorg;
 	msg->src = src;
@@ -37,18 +37,18 @@ message_t *message_create(message_type_t type, uint8_t rorg, uint8_t data[], uin
 	return msg;
 }
 
-message_t *message_create_from_frame(frame_t *frame)
+eltako_message_t *eltako_message_create_from_frame(eltako_frame_t *frame)
 {
-	message_t *msg = calloc(1, sizeof(message_t));
-	msg->rorg = frame_get_data(frame)[3];
-	msg->src = frame_get_data(frame)[8] << 24 | frame_get_data(frame)[9] << 16
-			| frame_get_data(frame)[10] << 8 | frame_get_data(frame)[11];
-	msg->status = frame_get_data(frame)[12];
+	eltako_message_t *msg = calloc(1, sizeof(eltako_message_t));
+	msg->rorg = eltako_frame_get_data(frame)[3];
+	msg->src = eltako_frame_get_data(frame)[8] << 24 | eltako_frame_get_data(frame)[9] << 16
+			| eltako_frame_get_data(frame)[10] << 8 | eltako_frame_get_data(frame)[11];
+	msg->status = eltako_frame_get_data(frame)[12];
 
-	msg->data[3] = frame_get_data(frame)[4];
-	msg->data[2] = frame_get_data(frame)[5];
-	msg->data[1] = frame_get_data(frame)[6];
-	msg->data[0] = frame_get_data(frame)[7];
+	msg->data[3] = eltako_frame_get_data(frame)[4];
+	msg->data[2] = eltako_frame_get_data(frame)[5];
+	msg->data[1] = eltako_frame_get_data(frame)[6];
+	msg->data[0] = eltako_frame_get_data(frame)[7];
 
 	switch (msg->rorg)
 	{
@@ -66,15 +66,15 @@ message_t *message_create_from_frame(frame_t *frame)
 	return msg;
 }
 
-void message_destroy(message_t *msg)
+void eltako_message_destroy(eltako_message_t *msg)
 {
 	free(msg);
 }
 
-void message_print(message_t *msg)
+void eltako_message_print(eltako_message_t *msg)
 {
 	printf("message: type:%s, rorg:%02x, data:%02x %02x %02x %02x, source 0x%08x, status: %02x\n",
-			message_type_to_string(msg->type),
+			eltako_message_type_to_string(msg->type),
 			msg->rorg,
 			msg->data[3],
 			msg->data[2],
@@ -84,20 +84,20 @@ void message_print(message_t *msg)
 			msg->status);
 }
 
-int message_send(message_t *msg, int fd)
+int eltako_message_send(eltako_message_t *msg, int fd)
 {
-	frame_t *frame = message_to_frame(msg);
-	int rv = frame_send(frame, fd);
+	eltako_frame_t *frame = eltako_message_to_frame(msg);
+	int rv = eltako_frame_send(frame, fd);
 	free(frame);
 	return rv;
 }
 
-char *message_type_to_string(message_type_t type)
+char *eltako_message_type_to_string(eltako_message_type_t type)
 {
 	return msg_types_name[type];
 }
 
-frame_t *message_to_frame(message_t *msg)
+eltako_frame_t *eltako_message_to_frame(eltako_message_t *msg)
 {
-	return frame_create(msg->rorg, msg->data, msg->src, msg->status);
+	return eltako_frame_create(msg->rorg, msg->data, msg->src, msg->status);
 }

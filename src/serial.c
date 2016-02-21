@@ -16,7 +16,7 @@
 
 #include <libeltako/serial.h>
 
-int serial_port_init(char *port)
+int eltako_serial_port_init(const char *port)
 {
 	struct termios tty;
 
@@ -62,17 +62,17 @@ int serial_port_init(char *port)
 	return fd;
 }
 
-void serial_port_close(int fd)
+void eltako_serial_port_close(int fd)
 {
 	close(fd);
 }
 
-int serial_read(int fd, void *buf, size_t len)
+int eltako_serial_read(int fd, void *buf, size_t len)
 {
 	return read(fd, buf, len);
 }
 
-int serial_write(int fd, void *buf, size_t len)
+int eltako_serial_write(int fd, void *buf, size_t len)
 {
 	return write(fd, buf, len);
 }
