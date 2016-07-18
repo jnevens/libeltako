@@ -22,37 +22,37 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if ((fd = serial_port_init(argv[1])) <= 0) {
+	if ((fd = eltako_serial_port_init(argv[1])) <= 0) {
 		printf("serial port setup failed!\n");
 		return -1;
 	}
 
-	frame_receiver_t *receiver =	frame_receiver_init();
+	eltako_frame_receiver_t *receiver =	eltako_frame_receiver_init();
 	uint8_t buf[1024];
 	ssize_t rval;
 
 	bzero(buf, sizeof(buf));
 	while (1) {
-		if ((rval = serial_read(fd, buf, sizeof(buf))) < 0) {
+		if ((rval = eltako_serial_read(fd, buf, sizeof(buf))) < 0) {
 			if (errno == EWOULDBLOCK) {
 				break;
 			}
 			perror("reading stream message");
 		} else if (rval > 0) { // get data
-			frame_receiver_add_data(receiver, buf, (size_t) rval);
+			eltako_frame_receiver_add_data(receiver, buf, (size_t) rval);
 
-			frame_t *frame = NULL;
-			while ((frame = frame_receiver_parse_buffer(receiver)) != NULL) {
-				frame_print(frame);
-				message_t *msg = message_create_from_frame(frame);
-				message_print(msg);
-				frame_destroy(frame);
-				message_destroy(msg);
+			eltako_frame_t *frame = NULL;
+			while ((frame = eltako_frame_receiver_parse_buffer(receiver)) != NULL) {
+				eltako_frame_print(frame);
+				eltako_message_t *msg = eltako_message_create_from_frame(frame);
+				eltako_message_print(msg);
+				eltako_frame_destroy(frame);
+				eltako_message_destroy(msg);
 			}
 		}
 	}
 
-	serial_port_close(fd);
-	frame_receiver_destroy(receiver);
+	eltako_serial_port_close(fd);
+	eltako_frame_receiver_destroy(receiver);
 	return 0;
 }

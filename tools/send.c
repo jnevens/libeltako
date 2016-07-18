@@ -46,7 +46,7 @@ static struct argp_option options[] = {
 	};
 
 /* Parse a single option. */
-static error_t parse_opt(int key, char *arg, struct argp_state *state)
+static error_t eltako_parse_opt(int key, char *arg, struct argp_state *state)
 {
 	/* Get the input argument from argp_parse, which we
 	 know is a pointer to our arguments structure. */
@@ -79,7 +79,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
-static struct argp argp = { options, parse_opt, args_doc, doc };
+static struct argp argp = { options, eltako_parse_opt, args_doc, doc };
 
 
 
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 //		return -1;
 //	}
 
-	if ((fd = serial_port_init(arguments.dev)) <= 0) {
+	if ((fd = eltako_serial_port_init(arguments.dev)) <= 0) {
 		printf("serial port setup failed!\n");
 		return -1;
 	}
@@ -104,40 +104,40 @@ int main(int argc, char *argv[])
 //
 //	uint8_t dim[14] = {0xA5, 0x5A ,0x0B ,0x07 ,0x02 ,0x64 ,0x10 ,0x09 ,0xEE ,0xEE ,0xEE ,0x00 ,0x30 ,0xFF};
 //	//uint8_t dim[14] = {0xA5, 0x5A ,0x0B ,0x07 ,0x02 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0x00 ,0x00 ,0xFF}; // LEARN
-//	frame_t *ff = frame_create_from_buffer(dim, 14);
+//	eltako_frame_t *ff = frame_create_from_buffer(dim, 14);
 //	frame_print(ff);
 //	frame_send(ff, fd);
 //	usleep(100000);
 
 //	uint8_t btn_on[14] = {0xA5, 0x5A ,0x0B ,0x05 ,0x70 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0xE0 ,0x30 ,0xFF};
-//	frame_t *f = frame_create(btn_on, 14);
+//	eltako_frame_t *f = frame_create(btn_on, 14);
 //	frame_print(f);
 //	frame_send(f, fd);
 
 //	uint8_t btn_off[14] = {0xA5, 0x5A ,0x0B ,0x05 ,0x00 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0xE0 ,0x20 ,0xFF};
-//	frame_t *fo = frame_create(btn_off, 14);
+//	eltako_frame_t *fo = frame_create(btn_off, 14);
 //	frame_print(fo);
 //	frame_send(fo, fd);
 
-//	message_t *btn_press = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_PRESS);
+//	eltako_message_t *btn_press = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_PRESS);
 //	message_print(btn_press);
-//	frame_t *btn_press_frame = message_to_frame(btn_press);
+//	eltako_frame_t *btn_press_frame = message_to_frame(btn_press);
 //	frame_print(btn_press_frame);
 //	message_send(btn_press, fd);
 //	usleep(100000);
-//	message_t *btn_release = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_RELEASE);
+//	eltako_message_t *btn_release = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_RELEASE);
 //	message_print(btn_release);
-//	frame_t *btn_release_frame = message_to_frame(btn_release);
+//	eltako_frame_t *btn_release_frame = message_to_frame(btn_release);
 //	frame_print(btn_release_frame);
 //	message_send(btn_release, fd);
 
-	//message_t *dmr = dimmer_create_message(0xeeeeee00, DIMMER_EVENT_ON, 36, 0x00, false);
-	frame_t *frame = frame_create(arguments.rorg, (uint8_t *)&arguments.data, arguments.src, arguments.status);
+	//eltako_message_t *dmr = dimmer_create_message(0xeeeeee00, DIMMER_EVENT_ON, 36, 0x00, false);
+	eltako_frame_t *frame = eltako_frame_create(arguments.rorg, (uint8_t *)&arguments.data, arguments.src, arguments.status);
 	//message_print(dmr);
-	//frame_t *dmr_frame = message_to_frame(dmr);
-	frame_print(frame);
-	frame_send(frame, fd);
+	//eltako_frame_t *dmr_frame = message_to_frame(dmr);
+	eltako_frame_print(frame);
+	eltako_frame_send(frame, fd);
 
-	serial_port_close(fd);
+	eltako_serial_port_close(fd);
 	return 0;
 }
