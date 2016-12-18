@@ -62,6 +62,18 @@ int eltako_serial_port_init(const char *port)
 	return fd;
 }
 
+int eltako_serial_port_set_blocking(int fd, bool blocking)
+{
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (blocking) {
+		flags &= ~O_NONBLOCK;
+	} else {
+		flags |= O_NONBLOCK;
+	}
+
+	return fcntl(fd, F_SETFL, flags);
+}
+
 void eltako_serial_port_close(int fd)
 {
 	close(fd);

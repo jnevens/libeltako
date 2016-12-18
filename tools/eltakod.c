@@ -61,9 +61,6 @@ void new_connection_callback(vsb_conn_t *vsb_conn, void *arg)
 void incoming_eltako_data(int fd, short revents, void *arg)
 {
 	vsb_server_t *server = arg;
-
-	fprintf(stdout, "incoming eltako data!");
-
 	uint8_t buf[1024];
 	ssize_t rval;
 
@@ -103,6 +100,8 @@ int main(int argc, char *argv[])
 		printf("serial port setup failed!\n");
 		return -1;
 	}
+
+	eltako_serial_port_set_blocking(eltako_fd, false);
 
 	evquick_init();
 	const char *path = "/var/run/eltako.socket";
