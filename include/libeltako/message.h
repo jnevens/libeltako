@@ -29,6 +29,11 @@ void eltako_message_print(eltako_message_t *msg);
 eltako_frame_t *eltako_message_to_frame(eltako_message_t *msg);
 int eltako_message_send(eltako_message_t *msg, int fd);
 
+uint32_t eltako_message_get_address(eltako_message_t *msg);
+uint8_t eltako_message_get_status(eltako_message_t *msg);
+uint8_t eltako_message_get_rorg(eltako_message_t *msg);
+const uint8_t *eltako_message_get_data(eltako_message_t *msg);
+
 char *eltako_message_type_to_string(eltako_message_type_t type);
 
 #endif /* MESSAGE_H_ */

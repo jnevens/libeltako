@@ -101,3 +101,24 @@ eltako_frame_t *eltako_message_to_frame(eltako_message_t *msg)
 {
 	return eltako_frame_create(msg->rorg, msg->data, msg->src, msg->status);
 }
+
+uint32_t eltako_message_get_address(eltako_message_t *msg)
+{
+	return msg->src;
+}
+
+uint8_t eltako_message_get_status(eltako_message_t *msg)
+{
+	return msg->status;
+}
+
+uint8_t eltako_message_get_rorg(eltako_message_t *msg)
+{
+	return msg->rorg;
+}
+
+const uint8_t *eltako_message_get_data(eltako_message_t *msg)
+{
+	return msg->data;
+}
+
