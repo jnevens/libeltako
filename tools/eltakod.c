@@ -123,7 +123,7 @@ bool daemonize(const char *pf)
 	}
 	/* If we got a good PID, then we can exit the parent process. */
 	if (pid > 0) { // Child can continue to run even after the parent has finished executing
-		printf("Child ceated: pid: %d\n", pid);
+		printf("Child created: pid: %d\n", pid);
 		daemon_write_pidfile(pf, pid);
 		exit(0);
 	}
