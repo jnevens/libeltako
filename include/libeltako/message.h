@@ -12,7 +12,8 @@
 
 #define ELTAKO_MSG_TYPES \
 X(MSG_TYPE_BUTTON, "butten") \
-X(MSG_TYPE_DIMMER, "dimmer")
+X(MSG_TYPE_DIMMER, "dimmer") \
+X(MSG_TYPE_BLIND, "blind")
 
 #define X(a, b) a,
 typedef enum {
