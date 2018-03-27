@@ -16,7 +16,7 @@
 #include <libeltako/button.h>
 #include <libeltako/dimmer.h>
 
-int fd = 0;
+static int fd = 0;
 
 /* Used by main to communicate with parse_opt. */
 struct arguments
@@ -81,60 +81,17 @@ static error_t eltako_parse_opt(int key, char *arg, struct argp_state *state)
 
 static struct argp argp = { options, eltako_parse_opt, args_doc, doc };
 
-
-
 int main(int argc, char *argv[])
 {
-
 	/* parse arguments */
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-//	if (argc < 3) {
-//		printf("usage: %s [PORT] [TYPE] [ACTION] OPTIONAL ARGUMENTS\n", argv[0]);
-//		printf("\tPORT    ex.: /dev/ttyUSB0\n");
-//		printf("\tTYPE    BUTTON, DIMMER\n");
-//		return -1;
-//	}
 
 	if ((fd = eltako_serial_port_init(arguments.dev)) <= 0) {
 		printf("serial port setup failed!\n");
 		return -1;
 	}
 
-//	                                     RORG    02    %   DIMS    ON  SOURCE ADDR                ?   CRC
-//
-//	uint8_t dim[14] = {0xA5, 0x5A ,0x0B ,0x07 ,0x02 ,0x64 ,0x10 ,0x09 ,0xEE ,0xEE ,0xEE ,0x00 ,0x30 ,0xFF};
-//	//uint8_t dim[14] = {0xA5, 0x5A ,0x0B ,0x07 ,0x02 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0x00 ,0x00 ,0xFF}; // LEARN
-//	eltako_frame_t *ff = frame_create_from_buffer(dim, 14);
-//	frame_print(ff);
-//	frame_send(ff, fd);
-//	usleep(100000);
-
-//	uint8_t btn_on[14] = {0xA5, 0x5A ,0x0B ,0x05 ,0x70 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0xE0 ,0x30 ,0xFF};
-//	eltako_frame_t *f = frame_create(btn_on, 14);
-//	frame_print(f);
-//	frame_send(f, fd);
-
-//	uint8_t btn_off[14] = {0xA5, 0x5A ,0x0B ,0x05 ,0x00 ,0x00 ,0x00 ,0x00 ,0xEE ,0xEE ,0xEE ,0xE0 ,0x20 ,0xFF};
-//	eltako_frame_t *fo = frame_create(btn_off, 14);
-//	frame_print(fo);
-//	frame_send(fo, fd);
-
-//	eltako_message_t *btn_press = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_PRESS);
-//	message_print(btn_press);
-//	eltako_frame_t *btn_press_frame = message_to_frame(btn_press);
-//	frame_print(btn_press_frame);
-//	message_send(btn_press, fd);
-//	usleep(100000);
-//	eltako_message_t *btn_release = button_create_message(0xfefee20e, BTN_WIP_TOP_RIGHT, BTN_EVENT_RELEASE);
-//	message_print(btn_release);
-//	eltako_frame_t *btn_release_frame = message_to_frame(btn_release);
-//	frame_print(btn_release_frame);
-//	message_send(btn_release, fd);
-
-	//eltako_message_t *dmr = dimmer_create_message(0xeeeeee00, DIMMER_EVENT_ON, 36, 0x00, false);
 	eltako_frame_t *frame = eltako_frame_create(arguments.rorg, (uint8_t *)&arguments.data, arguments.src, arguments.status);
-	//message_print(dmr);
-	//eltako_frame_t *dmr_frame = message_to_frame(dmr);
 	eltako_frame_print(frame);
 	eltako_frame_send(frame, fd);
 
