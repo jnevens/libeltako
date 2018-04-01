@@ -18,6 +18,8 @@
 #include <libeltako/serial.h>
 #include <libeltako/frame_receiver.h>
 
+#include "config.h"
+
 static evquick_event *server_event = NULL;
 static evquick_event *eltako_event = NULL;
 static eltako_frame_receiver_t *eltako_receiver = NULL;
@@ -29,6 +31,7 @@ struct arguments
 	char *dev;
 	char *pidfile;
 	char *socket;
+	char *conffile;
 	bool daemonize;
 };
 
@@ -37,6 +40,7 @@ static struct arguments arguments = {
 		.dev = "/dev/ttyUSB0",
 		.pidfile = "/var/run/eltakod.pid",
 		.socket = "/var/run/eltako.socket",
+		.conffile = "/etc/eltako/eltakod.conf",
 		.daemonize = false,
 };
 
@@ -48,37 +52,33 @@ static char args_doc[] = "eltakod [options] device";
 
 /* The options we understand. */
 static struct argp_option options[] = {
-//		{ "device", 'D', "Device", 0, "Device to use (default: /dev/ttyUSB0" },
+		{ "device", 'D', "Device", 0, "Device to use (default: /dev/ttyUSB0" },
 		{ "pidfile", 'p', "Pidfile", 0, "PID file (default: /var/run/eltakod.pid)" },
 		{ "socket", 's', "sockpath", 0, "Unix socket file location (default: /var/run/eltako.socket)" },
 		{ "daemonize", 'd', 0, 0, "Run as daemon" },
+		{ "conffile", 'c', 0, 0, "Config file (default: /etc/eltako/eltakod.conf)" },
 		{ 0 }
 	};
 
 /* Parse a single option. */
-static error_t eltako_parse_opt(int key, char *arg, struct argp_state *state)
+static error_t eltakod_parse_opt(int key, char *arg, struct argp_state *state)
 {
 	/* Get the input argument from argp_parse, which we
 	 know is a pointer to our arguments structure. */
 	struct arguments *arguments = state->input;
 
 	switch (key) {
+	case 'D':
+		arguments->dev = arg;
+		break;
 	case 'd':
 		arguments->daemonize = true;
 		break;
 	case 'p':
 		arguments->pidfile = arg;
 		break;
-	case ARGP_KEY_ARG:
-		if (state->arg_num == 0)
-			arguments->dev = arg;
-		else
-			argp_usage(state);
-		break;
-	case ARGP_KEY_END:
-		if (state->arg_num < 1) {
-			argp_usage(state);
-		}
+	case 'c':
+		arguments->conffile = arg;
 		break;
 	default:
 		return ARGP_ERR_UNKNOWN;
@@ -86,7 +86,7 @@ static error_t eltako_parse_opt(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
-static struct argp argp = { options, eltako_parse_opt, args_doc, doc };
+static struct argp argp = { options, eltakod_parse_opt, args_doc, doc };
 
 static int daemon_write_pidfile(const char *pidfile, pid_t pid)
 {
@@ -145,6 +145,25 @@ bool daemonize(const char *pf)
 	}
 
 	return true;
+}
+
+static int eltakod_parse_config(const char *var, const char *val, void *arg)
+{
+	struct arguments *args = arg;
+
+	if (strcmp(var, "device") == 0) {
+		args->dev = strdup(val);
+	} else if (strcmp(var, "pidfile") == 0) {
+		args->pidfile = strdup(val);
+	} else if (strcmp(var, "socket") == 0) {
+		args->socket = strdup(val);
+	} else if (strcmp(var, "daemonize") == 0) {
+		if (strcmp(val, "true")) {
+			args->daemonize = true;
+		}
+	}
+
+	return 0;
 }
 
 void incoming_connection_data_callback(vsb_conn_t *vsb_conn, void *data, size_t len, void *arg)
@@ -219,7 +238,17 @@ void incoming_eltako_data(int fd, short revents, void *arg)
 int main(int argc, char *argv[])
 {
 	/* parse arguments */
-	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+	if (argp_parse(&argp, argc, argv, 0, 0, &arguments) != 0) {
+		printf("Failed to parse arguments!\n");
+	}
+
+	if (config_file_exists(arguments.conffile)) {
+		if (!config_file_parse(eltakod_parse_config, arguments.conffile, &arguments)) {
+			printf("Failed to parse config file!\n");
+		}
+	} else {
+		printf("No config file found, using defaults!\n");
+	}
 
 	if ((eltako_fd = eltako_serial_port_init(arguments.dev)) <= 0) {
 		printf("serial port setup failed!\n");
