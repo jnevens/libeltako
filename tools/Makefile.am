@@ -16,4 +16,4 @@ eltakod_SOURCES = \
 eltakod__DATA = eltakod.conf
 
 install-data-local:
-	mkdir -p $(eltakod_dir)/scripts.d
+	mkdir -p $(DESTDIR)/$(eltakod_dir)/scripts.d
