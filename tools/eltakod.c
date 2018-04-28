@@ -8,14 +8,17 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <argp.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <libevquick/libevquick.h>
 #include <libvsb/server.h>
 #include <libeltako/frame.h>
 #include <libeltako/serial.h>
+#include <libeltako/message.h>
 #include <libeltako/frame_receiver.h>
 
 #include "config.h"
@@ -32,6 +35,7 @@ struct arguments
 	char *pidfile;
 	char *socket;
 	char *conffile;
+	char *scriptsdir;
 	bool daemonize;
 };
 
@@ -41,6 +45,7 @@ static struct arguments arguments = {
 		.pidfile = "/var/run/eltakod.pid",
 		.socket = "/var/run/eltako.socket",
 		.conffile = "/etc/eltako/eltakod.conf",
+		.scriptsdir = "/etc/eltako/scripts.d",
 		.daemonize = false,
 };
 
@@ -157,6 +162,8 @@ static int eltakod_parse_config(const char *var, const char *val, void *arg)
 		args->pidfile = strdup(val);
 	} else if (strcmp(var, "socket") == 0) {
 		args->socket = strdup(val);
+	} else if (strcmp(var, "scriptsdir") == 0) {
+		args->scriptsdir = strdup(val);
 	} else if (strcmp(var, "daemonize") == 0) {
 		if (strcmp(val, "true")) {
 			args->daemonize = true;
@@ -204,6 +211,45 @@ void new_connection_callback(vsb_conn_t *vsb_conn, void *arg)
 	vsb_conn_register_disconnect_cb(vsb_conn, connection_disconnect_callback, (void *)event);
 }
 
+void eltakod_execute_scripts(eltako_frame_t *frame)
+{
+	DIR *dir;
+	struct dirent *ent;
+
+	if (access(arguments.scriptsdir, F_OK) != 0)
+		return;
+
+	if ((dir = opendir(arguments.scriptsdir)) != NULL) {
+		/* print all the files and directories within directory */
+		while ((ent = readdir(dir)) != NULL) {
+			char path[128];
+			char cmd[256];
+
+			if (ent->d_name[0] == '.')
+				continue;
+
+			sprintf(path, "%s/%s", arguments.scriptsdir, ent->d_name);
+			if (access(path, X_OK) == 0) {
+				eltako_message_t *msg = eltako_message_create_from_frame(frame);
+				uint8_t *data = eltako_message_get_data(msg);
+				printf("Execute script: %s\n", path);
+
+				snprintf(cmd, sizeof(cmd), "%s %d 0x%08X 0x%02X%02X%02X%02X %d",
+						path,
+						eltako_message_get_rorg(msg),
+						eltako_message_get_address(msg),
+						data[0], data[1], data[2], data[3],
+						eltako_message_get_status(msg));
+				system(cmd);
+			}
+		}
+		closedir(dir);
+	} else {
+		/* could not open directory */
+		printf("Failed to open dir: %m");
+	}
+}
+
 void incoming_eltako_data(int fd, short revents, void *arg)
 {
 	vsb_server_t *server = arg;
@@ -226,6 +272,8 @@ void incoming_eltako_data(int fd, short revents, void *arg)
 				size_t data_size = eltako_frame_get_raw_size(frame);
 
 				vsb_server_send(server, data, data_size);
+
+				eltakod_execute_scripts(frame);
 
 				eltako_frame_print(frame);
 				eltako_frame_destroy(frame);
@@ -262,6 +310,9 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to daemonize!\n");
 		}
 	}
+
+	uint8_t data[4] = { 0x12, 0x34, 0x56, 0x78};
+	eltakod_execute_scripts(eltako_frame_create(5, data, 0x12345678, 20));
 
 	evquick_init();
 	unlink(arguments.socket);
