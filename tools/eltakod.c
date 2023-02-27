@@ -28,6 +28,9 @@ static evquick_event *eltako_event = NULL;
 static eltako_frame_receiver_t *eltako_receiver = NULL;
 static int eltako_fd = -1;
 
+/* function declarations */
+void eltakod_execute_scripts(eltako_frame_t *frame, const char *prefix);
+
 /* Used by main to communicate with parse_opt. */
 struct arguments
 {
@@ -180,6 +183,7 @@ void incoming_connection_data_callback(vsb_conn_t *vsb_conn, void *data, size_t 
 	eltako_frame_t *frame = eltako_frame_create_from_buffer(data, len);
 	vsb_server_broadcast(vsb_server, data, len, vsb_conn);
 	eltako_frame_send(frame, eltako_fd);
+	eltakod_execute_scripts(frame, "TX");
 }
 
 void incoming_connection_callback(int fd, short revents, void *arg)
@@ -211,7 +215,7 @@ void new_connection_callback(vsb_conn_t *vsb_conn, void *arg)
 	vsb_conn_register_disconnect_cb(vsb_conn, connection_disconnect_callback, (void *)event);
 }
 
-void eltakod_execute_scripts(eltako_frame_t *frame)
+void eltakod_execute_scripts(eltako_frame_t *frame, const char *prefix)
 {
 	DIR *dir;
 	struct dirent *ent;
@@ -231,11 +235,12 @@ void eltakod_execute_scripts(eltako_frame_t *frame)
 			sprintf(path, "%s/%s", arguments.scriptsdir, ent->d_name);
 			if (access(path, X_OK) == 0) {
 				eltako_message_t *msg = eltako_message_create_from_frame(frame);
-				uint8_t *data = eltako_message_get_data(msg);
+				const uint8_t *data = eltako_message_get_data(msg);
 				printf("Execute script: %s\n", path);
 
-				snprintf(cmd, sizeof(cmd), "%s %d 0x%08X 0x%02X%02X%02X%02X %d",
+				snprintf(cmd, sizeof(cmd), "%s %s %d 0x%08X 0x%02X%02X%02X%02X %d",
 						path,
+						prefix,
 						eltako_message_get_rorg(msg),
 						eltako_message_get_address(msg),
 						data[0], data[1], data[2], data[3],
@@ -273,7 +278,7 @@ void incoming_eltako_data(int fd, short revents, void *arg)
 
 				vsb_server_send(server, data, data_size);
 
-				eltakod_execute_scripts(frame);
+				eltakod_execute_scripts(frame, "RX");
 
 				eltako_frame_print(frame);
 				eltako_frame_destroy(frame);
@@ -310,9 +315,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to daemonize!\n");
 		}
 	}
-
-	uint8_t data[4] = { 0x12, 0x34, 0x56, 0x78};
-	eltakod_execute_scripts(eltako_frame_create(5, data, 0x12345678, 20));
 
 	evquick_init();
 	unlink(arguments.socket);
