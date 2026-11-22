@@ -1,0 +1,273 @@
+# CI: cppcheck, tests/coverage, release tarball (make distcheck), .deb packages,
+# and optional publish to GitHub on version tags.
+#
+# Artifacts: cppcheck.log, coverage/, release/*.tar.gz, deb/*.deb
+#
+# GitHub publish (job publish-github, tags v* only):
+#   GITHUB_DEPLOY_KEY_B64 — recommended: base64 -w0 private key (Variable, Masked, Protected)
+#   GITHUB_DEPLOY_KEY     — alternative: type File (multiline paste often breaks in GitLab UI)
+#   GITHUB_REPO_SSH       — optional; default git@github.com:jnevens/libeltako.git
+#   GITHUB_TOKEN          — optional masked PAT; uploads distcheck .tar.gz to GitHub Releases
+#
+# Internal APT (same manual release job as GitHub, tags v*):
+#   APT_PUBLISH_KEY_B64 — base64 -w0 SSH private key (Masked, Protected)
+#   APT_REPREPRO_SUITE  — reprepro distribution name (required for APT upload), e.g. noble
+#   APT_PUBLISH_SSH     — optional; default reprepro@192.168.64.110
+#   APT_REPREPRO_BASE   — optional; default /srv/apt (reprepro -b path on host)
+#   APT_INCOMING_DIR    — optional; default /srv/apt/incoming (stage debs, then includedeb)
+# If apt "invalid signature" errors persist on self-hosted runners: prune Docker
+# (docker system prune), check runner disk space and system clock (NTP).
+#
+# eltakod needs libvsb and libevquick. scripts/ci-install-deps.sh builds them
+# from https://github.com/jnevens/libvsb.git (that tree bundles libevquick).
+
+stages:
+  - test
+  - build
+  - release
+
+variables:
+  # Required when --enable-gcov is used (see m4/gcov.m4).
+  CCACHE_DISABLE: "1"
+  # Uninstalled libtool build: tests link against libeltako.so in src/.libs
+  LD_LIBRARY_PATH: "${CI_PROJECT_DIR}/src/.libs"
+  GITHUB_REPO_SSH: "git@github.com:jnevens/libeltako.git"
+  APT_PACKAGES: >-
+    autoconf automake libtool pkg-config
+    build-essential
+    check libsubunit-dev
+    lcov gcovr
+    git ca-certificates
+
+# Fresh image + clean apt lists (avoids corrupt InRelease signatures on cached layers).
+.ci_apt:
+  image:
+    name: ubuntu:24.04
+    pull_policy: always
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - rm -rf /var/lib/apt/lists/*
+    - apt-get clean 2>/dev/null || true
+    - |
+      set -e
+      for attempt in 1 2 3; do
+        rm -rf /var/lib/apt/lists/*
+        if apt-get update -qq; then
+          break
+        fi
+        echo "apt-get update failed (attempt ${attempt}/3)" >&2
+        if [ "${attempt}" = 3 ]; then
+          exit 1
+        fi
+        sleep $((attempt * 2))
+      done
+
+.test_image:
+  extends: .ci_apt
+  before_script:
+    - !reference [.ci_apt, before_script]
+    - apt-get install -y -qq ${APT_PACKAGES}
+    - chmod +x scripts/ci-install-deps.sh
+    - ./scripts/ci-install-deps.sh
+
+cppcheck:
+  extends: .test_image
+  stage: test
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      cppcheck
+      git ca-certificates
+  script:
+    - autoreconf -fi
+    - ./configure --disable-valgrind
+    - ./scripts/cppcheck.sh 2>&1 | tee cppcheck.log
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "cppcheck report"
+    paths:
+      - cppcheck.log
+
+build-test-coverage:
+  extends: .test_image
+  stage: test
+  script:
+    - autoreconf -fi
+    - ./configure --enable-tests --enable-gcov --disable-valgrind
+    - export LD_LIBRARY_PATH="${CI_PROJECT_DIR}/src/.libs${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    - make coverage AM_COLOR_TESTS=always
+    - lcov --summary coverage.info | tee coverage-summary.txt
+    - |
+      gcovr -r "${CI_PROJECT_DIR}" \
+        --filter "${CI_PROJECT_DIR}/src/" \
+        --cobertura "${CI_PROJECT_DIR}/coverage/cobertura.xml"
+  coverage: '/lines\.*: (\d+\.\d+)%/'
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "build tests and coverage"
+    paths:
+      - coverage/
+      - coverage.info
+      - coverage-summary.txt
+      - tests/test-suite.log
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura.xml
+
+# Verify Makefile.am EXTRA_DIST, VPATH build, install/uninstall; ship tarball.
+distcheck:
+  extends: .test_image
+  stage: build
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      git ca-certificates
+  script:
+    - autoreconf -fi
+    - ./configure --disable-valgrind
+    - make distcheck
+    - mkdir -p "${CI_PROJECT_DIR}/release"
+    - mv libeltako-*.tar.gz "${CI_PROJECT_DIR}/release/"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "source tarball"
+    paths:
+      - release/
+
+# Binary packages (library, -dev, eltakod/eltako-send/eltako-dump).
+build-deb:
+  extends: .test_image
+  stage: build
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      debhelper devscripts fakeroot
+      git ca-certificates
+  script:
+    - dpkg-buildpackage -b -us -uc
+    - mkdir -p "${CI_PROJECT_DIR}/deb"
+    - mv ../libeltako0_*.deb ../libeltako-dev_*.deb "${CI_PROJECT_DIR}/deb/"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "debian packages"
+    paths:
+      - deb/
+
+# Push master + tag to GitHub and .deb files to reprepro (one manual play on version tags).
+publish-github:
+  extends: .ci_apt
+  stage: release
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  needs:
+    - job: cppcheck
+    - job: build-test-coverage
+    - job: distcheck
+      artifacts: true
+    - job: build-deb
+      artifacts: true
+  variables:
+    GIT_DEPTH: "0"
+    APT_PUBLISH_SSH: "reprepro@192.168.64.110"
+    APT_REPREPRO_BASE: "/srv/apt"
+  before_script:
+    - !reference [.ci_apt, before_script]
+    - apt-get install -y -qq git openssh-client ca-certificates
+  script:
+    - chmod +x scripts/ci-ssh-key-file.sh scripts/publish-apt-reprepro.sh
+    - |
+      set -eu
+      KEY_FILE="$(mktemp)"
+      chmod 600 "${KEY_FILE}"
+      if [ -n "${GITHUB_DEPLOY_KEY_B64:-}" ]; then
+        printf '%s' "${GITHUB_DEPLOY_KEY_B64}" | tr -d ' \n\r' | base64 -d > "${KEY_FILE}"
+      elif [ -n "${GITHUB_DEPLOY_KEY:-}" ] && [ -f "${GITHUB_DEPLOY_KEY}" ]; then
+        if grep -q $'\r' "${GITHUB_DEPLOY_KEY}" 2>/dev/null; then
+          echo "GITHUB_DEPLOY_KEY has CRLF line endings; normalizing."
+          sed 's/\r$//' "${GITHUB_DEPLOY_KEY}" > "${KEY_FILE}"
+        else
+          cp "${GITHUB_DEPLOY_KEY}" "${KEY_FILE}"
+        fi
+        chmod 600 "${KEY_FILE}"
+      else
+        echo "Set GITHUB_DEPLOY_KEY_B64 (recommended) or GITHUB_DEPLOY_KEY (File)." >&2
+        exit 1
+      fi
+      if [ ! -s "${KEY_FILE}" ]; then
+        echo "Deploy key material is empty after decode/copy." >&2
+        exit 1
+      fi
+      PAYLOAD_LINES="$(awk '/BEGIN OPENSSH PRIVATE KEY/{f=1;next} /END OPENSSH PRIVATE KEY/{f=0} f' "${KEY_FILE}" | grep -c . || true)"
+      echo "Deploy key: $(wc -l < "${KEY_FILE}") lines, $(wc -c < "${KEY_FILE}") bytes, ${PAYLOAD_LINES} payload line(s)"
+      if [ "${PAYLOAD_LINES}" -lt 1 ]; then
+        echo "No base64 payload between BEGIN and END; GitLab likely truncated the File variable." >&2
+        echo "Use GITHUB_DEPLOY_KEY_B64 instead: base64 -w0 < private-key-file" >&2
+        exit 1
+      fi
+      if ! ssh-keygen -y -f "${KEY_FILE}" >/dev/null 2>"${CI_PROJECT_DIR}/.ssh-keygen-y.err"; then
+        echo "Deploy key is not a valid unencrypted OpenSSH private key." >&2
+        cat "${CI_PROJECT_DIR}/.ssh-keygen-y.err" >&2
+        echo "Fix:" >&2
+        echo "  ssh-keygen -t ed25519 -N \"\" -f gitlab-ci-libeltako" >&2
+        echo "  base64 -w0 gitlab-ci-libeltako  →  GitLab variable GITHUB_DEPLOY_KEY_B64 (Masked)" >&2
+        echo "  Add gitlab-ci-libeltako.pub on GitHub deploy keys (Allow write access)." >&2
+        exit 1
+      fi
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+      eval "$(ssh-agent -s)"
+      if ! ssh-add "${KEY_FILE}"; then
+        echo "ssh-add failed after ssh-keygen -y succeeded; check agent limits." >&2
+        exit 1
+      fi
+      git remote remove github 2>/dev/null || true
+      git remote add github "${GITHUB_REPO_SSH}"
+      git fetch origin "refs/heads/master:refs/remotes/origin/master"
+      if ! git merge-base --is-ancestor "${CI_COMMIT_SHA}" origin/master; then
+        echo "Tag ${CI_COMMIT_TAG} is not on branch master; refusing to publish." >&2
+        exit 1
+      fi
+      echo "Publishing ${CI_COMMIT_TAG} (${CI_COMMIT_SHA}) to GitHub..."
+      git push github "HEAD:refs/heads/master"
+      git push github "${CI_COMMIT_TAG}"
+      if [ -n "${GITHUB_TOKEN:-}" ]; then
+        apt-get install -y -qq gh
+        # gh uses GITHUB_TOKEN / GH_TOKEN from the environment; do not run
+        # `gh auth login --with-token` when the variable is already set (it exits 1).
+        export GH_TOKEN="${GITHUB_TOKEN}"
+        TARBALL="$(ls release/libeltako-*.tar.gz | head -1)"
+        if [ ! -f "${TARBALL}" ]; then
+          echo "Missing distcheck tarball under release/ (need distcheck job artifacts)." >&2
+          exit 1
+        fi
+        if gh release view "${CI_COMMIT_TAG}" >/dev/null 2>&1; then
+          gh release upload "${CI_COMMIT_TAG}" "${TARBALL}" --clobber
+        else
+          gh release create "${CI_COMMIT_TAG}" "${TARBALL}" \
+            --title "${CI_COMMIT_TAG}" --generate-notes --verify-tag
+        fi
+      else
+        echo "GITHUB_TOKEN not set; skipped GitHub Release asset upload (git push only)."
+        echo "GitHub still provides auto-generated source archives for the tag."
+      fi
+      if [ -n "${APT_PUBLISH_KEY_B64:-}" ] || { [ -n "${APT_PUBLISH_KEY:-}" ] && [ -f "${APT_PUBLISH_KEY}" ]; }; then
+        : "${APT_REPREPRO_SUITE:?Set CI variable APT_REPREPRO_SUITE (e.g. noble)}"
+        APT_KEY_FILE="$(scripts/ci-ssh-key-file.sh APT_PUBLISH)"
+        HOST="${APT_PUBLISH_SSH#*@}"
+        ssh-keyscan -t ed25519,rsa "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+        ssh-add "${APT_KEY_FILE}"
+        ./scripts/publish-apt-reprepro.sh deb
+      else
+        echo "APT_PUBLISH_KEY_B64 not set; skipped reprepro upload."
+      fi

@@ -4,8 +4,7 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: libeltako
-Description: A library for easy usage of a virtual serial bus.
+Description: Eltako Series 14 bus library
 Version: @VERSION@
-Requires.private: @DEPENDENCIES@
 Libs: -L${libdir} -leltako
 Cflags: -I${includedir}

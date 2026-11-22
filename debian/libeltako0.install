@@ -1,0 +1,5 @@
+usr/lib/*/libeltako.so.*
+usr/sbin/eltako-dump
+usr/sbin/eltako-send
+usr/sbin/eltakod
+etc/eltako/eltakod.conf

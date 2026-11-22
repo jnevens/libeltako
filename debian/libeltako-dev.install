@@ -1,0 +1,5 @@
+usr/include/*
+usr/lib/*/libeltako.so
+usr/lib/*/libeltako.la
+usr/lib/*/libeltako.a
+usr/lib/*/pkgconfig/*

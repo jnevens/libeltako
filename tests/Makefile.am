@@ -1,10 +1,12 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include
-AM_CFLAGS = -pthread -lcheck_pic -lrt -lm
-LDADD = ../src/libeltako.la
+AM_CPPFLAGS = -I$(top_builddir)/include -I$(top_srcdir)/include
+AM_CFLAGS = $(CHECK_CFLAGS)
+LDADD = $(top_builddir)/src/libeltako.la $(CHECK_LIBS)
 
-TESTS = 
+TESTS = \
+	check_frame
+
 @VALGRIND_CHECK_RULES@
 
 check_PROGRAMS = $(TESTS)
 
-# check_eltako_SOURCES = check_eltako.c
+check_frame_SOURCES = check_frame.c

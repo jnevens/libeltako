@@ -47,36 +47,22 @@ AC_DEFUN([AC_TDD_GCOV],
     AC_MSG_ERROR([ccache must be disabled when --enable-gcov option is used. You can disable ccache by setting environment variable CCACHE_DISABLE=1.])
   fi
 
-  lcov_version_list="1.6 1.7 1.8 1.9 1.10 1.12"
   AC_CHECK_PROG(LCOV, lcov, lcov)
   AC_CHECK_PROG(GENHTML, genhtml, genhtml)
 
-  if test "$LCOV"; then
-    AC_CACHE_CHECK([for lcov version], glib_cv_lcov_version, [
-      glib_cv_lcov_version=invalid
-      lcov_version=`$LCOV -v 2>/dev/null | $SED -e 's/^.* //'`
-      for lcov_check_version in $lcov_version_list; do
-        if test "$lcov_version" = "$lcov_check_version"; then
-          glib_cv_lcov_version="$lcov_check_version (ok)"
-        fi
-      done
-    ])
-  else
-    lcov_msg="To enable code coverage reporting you must have one of the following lcov versions installed: $lcov_version_list"
-    AC_MSG_ERROR([$lcov_msg])
+  if test -z "$LCOV" || test -z "$GENHTML"; then
+    AC_MSG_ERROR([lcov and genhtml are required for --enable-gcov. Install the lcov package.])
   fi
 
-  case $glib_cv_lcov_version in
-    ""|invalid[)]
-      lcov_msg="You must have one of the following versions of lcov: $lcov_version_list (found: $lcov_version)."
-      AC_MSG_ERROR([$lcov_msg])
-      LCOV="exit 0;"
-      ;;
-  esac
-
-  if test -z "$GENHTML"; then
-    AC_MSG_ERROR([Could not find genhtml from the lcov package])
-  fi
+  AC_MSG_CHECKING([for lcov version])
+  # lcov 2.x treats -v as --verbose. Read --version and accept 1.10 or newer,
+  # including the 2.x series shipped with Ubuntu 26.04.
+  # Keep this free of square brackets: autoconf quotes those.
+  lcov_version=`$LCOV --version 2>/dev/null | awk '{print $NF}' | sed 's/-.*//'`
+  AS_VERSION_COMPARE([$lcov_version], [1.10],
+    [AC_MSG_ERROR([lcov >= 1.10 is required (found: ${lcov_version:-unknown})])],
+    [AC_MSG_RESULT([$lcov_version])],
+    [AC_MSG_RESULT([$lcov_version])])
 
   # Remove all optimization flags from CFLAGS
   changequote({,})
@@ -91,4 +77,3 @@ AC_DEFUN([AC_TDD_GCOV],
 
 fi
 ]) # AC_TDD_GCOV
-

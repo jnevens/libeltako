@@ -33,6 +33,7 @@ Makefile
 Makefile.in
 config.*
 configure
+configure~
 .libs
 .deps
 autom4te.cache
@@ -45,7 +46,11 @@ install-sh
 libtool
 libeltako.pc
 ltmain.sh
-m4/*
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
 missing
 stamp-h1
 tools/eltako-send
@@ -60,10 +65,31 @@ tools/eltakod
 tests/*.log
 test-driver
 tests/*.trs
+tests/check_frame
+
+# Debian package build (dpkg-buildpackage writes to the parent directory)
+../*.deb
+../*.ddeb
+../*.changes
+../*.buildinfo
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.debhelper.log
+debian/autoreconf.before
+debian/autoreconf.after
+debian/libeltako0/
+debian/libeltako-dev/
+debian/tmp/
+
+cppcheck.log
+libeltako-*.tar.gz
 
 #coverage
 coverage.info
+coverage-summary.txt
 coverage
 *.gcno
 *.gcov
-tests/*.gcda
+*.gcda

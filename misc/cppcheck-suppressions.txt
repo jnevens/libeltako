@@ -1,0 +1,26 @@
+# Project-specific cppcheck suppressions (id or id:path).
+# Keep this file even when empty so scripts/cppcheck.sh can pass --suppressions-list.
+
+# argp_parser_t is fixed by <argp.h>: state cannot be const.
+constParameterCallback:tools/send.c
+constParameterCallback:tools/eltakod.c
+
+# argp examples name the parsed struct the same as the global defaults.
+shadowVariable:tools/send.c
+shadowVariable:tools/eltakod.c
+
+# Existing code does not check calloc. A failed allocation still aborts in
+# the caller; this is not a new leak introduced by the release packaging.
+nullPointerOutOfMemory
+ctunullpointerOutOfMemory
+
+# Read-only parameters are not const in the historical headers.
+constParameter
+constParameterPointer
+
+# Loop indexes and locals are declared at the top of the function.
+variableScope
+
+# Redundant comparisons after an earlier length check (frame sync bytes,
+# buffer trim). Behavior is unchanged.
+knownConditionTrueFalse

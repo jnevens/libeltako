@@ -1,0 +1,8 @@
+libeltako (1.0.0-1) unstable; urgency=medium
+
+  * First stable upstream release (libeltako 1.0.0).
+  * Version now comes from configure.ac, including the libtool SONAME.
+  * Binary packages: libeltako0 (library, eltakod, eltako-send, eltako-dump),
+    libeltako-dev.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Sun, 22 Nov 2026 23:45:00 +0100

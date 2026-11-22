@@ -1,8 +1,7 @@
-AM_CPPFLAGS = -I$(top_buildir)/include -I$(top_srcdir)/include
-LDADD = $(top_builddir)/src/.libs/libeltako.la
-eltakod_dir=$(sysconfdir)/eltako
+AM_CPPFLAGS = -I$(top_builddir)/include -I$(top_srcdir)/include
+LDADD = $(top_builddir)/src/libeltako.la
 
-sbin_PROGRAMS = eltako-dump eltako-send eltakod
+sbin_PROGRAMS = eltako-dump eltako-send
 
 eltako_dump_SOURCES = \
 	dump.c
@@ -10,10 +9,33 @@ eltako_dump_SOURCES = \
 eltako_send_SOURCES = \
 	send.c
 
-eltakod_LDADD = -lvsb -levquick $(LDADD)
+if ENABLE_ELTAKOD
+sbin_PROGRAMS += eltakod
+
+eltakod_CPPFLAGS = $(AM_CPPFLAGS) $(ELTAKOD_CFLAGS)
+eltakod_LDADD = $(ELTAKOD_LIBS) $(LDADD)
 eltakod_SOURCES = \
 	eltakod.c config.c
-eltakod__DATA = eltakod.conf
+
+eltakodir = $(sysconfdir)/eltako
+eltako_DATA = eltakod.conf
 
 install-data-local:
-	mkdir -p $(DESTDIR)/$(eltakod_dir)/scripts.d
+	$(MKDIR_P) $(DESTDIR)$(eltakodir)/scripts.d
+
+uninstall-hook:
+	-rmdir $(DESTDIR)$(eltakodir)/scripts.d
+	-rmdir $(DESTDIR)$(eltakodir)
+else
+install-data-local:
+	@:
+
+uninstall-hook:
+	@:
+endif
+
+noinst_HEADERS = \
+	config.h
+
+EXTRA_DIST = \
+	eltakod.conf
