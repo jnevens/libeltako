@@ -52,6 +52,7 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 missing
+include/libeltako/version.h
 stamp-h1
 tools/eltako-send
 tools/eltako-dump

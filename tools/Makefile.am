@@ -39,3 +39,9 @@ noinst_HEADERS = \
 
 EXTRA_DIST = \
 	eltakod.conf
+
+$(eltako_dump_OBJECTS) $(eltako_send_OBJECTS): $(abs_top_builddir)/include/libeltako/version.h
+
+if ENABLE_ELTAKOD
+$(eltakod_OBJECTS): $(abs_top_builddir)/include/libeltako/version.h
+endif

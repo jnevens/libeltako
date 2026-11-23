@@ -15,6 +15,9 @@
 #include <libeltako/message.h>
 #include <libeltako/button.h>
 #include <libeltako/dimmer.h>
+#include <libeltako/version.h>
+
+const char *argp_program_version = ELTAKO_VERSION;
 
 static int fd = 0;
 

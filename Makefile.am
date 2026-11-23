@@ -15,6 +15,7 @@ pkgconfig_DATA = libeltako.pc
 
 EXTRA_DIST = \
 	libeltako.pc.in \
+	include/libeltako/version.h.in \
 	Makefile.am.coverage \
 	configure.ac \
 	m4/gcov.m4 \

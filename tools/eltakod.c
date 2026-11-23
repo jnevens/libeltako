@@ -20,8 +20,11 @@
 #include <libeltako/serial.h>
 #include <libeltako/message.h>
 #include <libeltako/frame_receiver.h>
+#include <libeltako/version.h>
 
 #include "config.h"
+
+const char *argp_program_version = ELTAKO_VERSION;
 
 static evquick_event *server_event = NULL;
 static evquick_event *eltako_event = NULL;

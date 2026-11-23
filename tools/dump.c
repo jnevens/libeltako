@@ -12,11 +12,17 @@
 #include <libeltako/serial.h>
 #include <libeltako/frame_receiver.h>
 #include <libeltako/message.h>
+#include <libeltako/version.h>
 
 static int fd = 0;
 
 int main(int argc, char *argv[])
 {
+	if (argc >= 2 && strcmp(argv[1], "--version") == 0) {
+		printf("%s\n", ELTAKO_VERSION);
+		return 0;
+	}
+
 	if (argc < 2) {
 		printf("usage: %s [PORT]\n", argv[0]);
 		return -1;
