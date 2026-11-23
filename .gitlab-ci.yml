@@ -3,13 +3,13 @@
 #
 # Artifacts: cppcheck.log, coverage/, release/*.tar.gz, deb/*.deb
 #
-# GitHub publish (job publish-github, tags v* only):
+# GitHub publish (job publish-github, tags v* only, manual):
 #   GITHUB_DEPLOY_KEY_B64 — recommended: base64 -w0 private key (Variable, Masked, Protected)
 #   GITHUB_DEPLOY_KEY     — alternative: type File (multiline paste often breaks in GitLab UI)
 #   GITHUB_REPO_SSH       — optional; default git@github.com:jnevens/libeltako.git
 #   GITHUB_TOKEN          — optional masked PAT; uploads distcheck .tar.gz to GitHub Releases
 #
-# Internal APT (same manual release job as GitHub, tags v*):
+# Internal APT (job publish-apt, tags v* only, separate manual play):
 #   APT_PUBLISH_KEY_B64 — base64 -w0 SSH private key (Masked, Protected)
 #   APT_REPREPRO_SUITE  — reprepro distribution name (required for APT upload), e.g. noble
 #   APT_PUBLISH_SSH     — optional; default reprepro@192.168.64.110
@@ -161,7 +161,7 @@ build-deb:
     paths:
       - deb/
 
-# Push master + tag to GitHub and .deb files to reprepro (one manual play on version tags).
+# Push master + tag to GitHub (manual play on version tags).
 publish-github:
   extends: .ci_apt
   stage: release
@@ -174,17 +174,12 @@ publish-github:
     - job: build-test-coverage
     - job: distcheck
       artifacts: true
-    - job: build-deb
-      artifacts: true
   variables:
     GIT_DEPTH: "0"
-    APT_PUBLISH_SSH: "reprepro@192.168.64.110"
-    APT_REPREPRO_BASE: "/srv/apt"
   before_script:
     - !reference [.ci_apt, before_script]
     - apt-get install -y -qq git openssh-client ca-certificates
   script:
-    - chmod +x scripts/ci-ssh-key-file.sh scripts/publish-apt-reprepro.sh
     - |
       set -eu
       KEY_FILE="$(mktemp)"
@@ -261,13 +256,46 @@ publish-github:
         echo "GITHUB_TOKEN not set; skipped GitHub Release asset upload (git push only)."
         echo "GitHub still provides auto-generated source archives for the tag."
       fi
-      if [ -n "${APT_PUBLISH_KEY_B64:-}" ] || { [ -n "${APT_PUBLISH_KEY:-}" ] && [ -f "${APT_PUBLISH_KEY}" ]; }; then
-        : "${APT_REPREPRO_SUITE:?Set CI variable APT_REPREPRO_SUITE (e.g. noble)}"
-        APT_KEY_FILE="$(scripts/ci-ssh-key-file.sh APT_PUBLISH)"
-        HOST="${APT_PUBLISH_SSH#*@}"
-        ssh-keyscan -t ed25519,rsa "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
-        ssh-add "${APT_KEY_FILE}"
-        ./scripts/publish-apt-reprepro.sh deb
-      else
-        echo "APT_PUBLISH_KEY_B64 not set; skipped reprepro upload."
+
+# Upload .deb files to reprepro (manual play on version tags, independent of GitHub).
+publish-apt:
+  extends: .ci_apt
+  stage: release
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  needs:
+    - job: cppcheck
+    - job: build-test-coverage
+    - job: build-deb
+      artifacts: true
+  variables:
+    GIT_DEPTH: "0"
+    APT_PUBLISH_SSH: "reprepro@192.168.64.110"
+    APT_REPREPRO_BASE: "/srv/apt"
+  before_script:
+    - !reference [.ci_apt, before_script]
+    - apt-get install -y -qq git openssh-client ca-certificates
+  script:
+    - chmod +x scripts/ci-ssh-key-file.sh scripts/publish-apt-reprepro.sh
+    - |
+      set -eu
+      : "${APT_REPREPRO_SUITE:?Set CI variable APT_REPREPRO_SUITE (e.g. noble)}"
+      KEY_FILE="$(scripts/ci-ssh-key-file.sh APT_PUBLISH)"
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      HOST="${APT_PUBLISH_SSH#*@}"
+      ssh-keyscan -t ed25519,rsa "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+      eval "$(ssh-agent -s)"
+      if ! ssh-add "${KEY_FILE}"; then
+        echo "ssh-add failed for the APT publish key." >&2
+        exit 1
       fi
+      git fetch origin "refs/heads/master:refs/remotes/origin/master"
+      if ! git merge-base --is-ancestor "${CI_COMMIT_SHA}" origin/master; then
+        echo "Tag ${CI_COMMIT_TAG} is not on branch master; refusing to publish." >&2
+        exit 1
+      fi
+      echo "Publishing ${CI_COMMIT_TAG} packages to ${APT_REPREPRO_SUITE}..."
+      ./scripts/publish-apt-reprepro.sh deb
